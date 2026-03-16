@@ -98,6 +98,26 @@ export async function restoreBackup(accessToken, folderPath, localZipPath) {
     log('  - No MCP config in backup');
   }
 
+  log('Restoring plugin config...');
+  const pluginConfigSrc = path.join(extractDir, 'plugin-config.json');
+  if (fileExists(pluginConfigSrc)) {
+    const backupPlugin = readJson(pluginConfigSrc).plugin;
+    const configDir = path.dirname(dirs.opencodeConfig);
+    ensureDir(configDir);
+    
+    if (fileExists(dirs.opencodeConfig)) {
+      const currentConfig = readJson(dirs.opencodeConfig);
+      currentConfig.plugin = backupPlugin;
+      writeJson(dirs.opencodeConfig, currentConfig);
+      log('  - Restored plugin config');
+    } else {
+      writeJson(dirs.opencodeConfig, { plugin: backupPlugin });
+      log('  - Restored plugin config');
+    }
+  } else {
+    log('  - No plugin config in backup');
+  }
+
   log('Cleaning up temp files...');
   fse.removeSync(extractDir);
 

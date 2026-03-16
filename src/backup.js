@@ -67,6 +67,15 @@ export async function createBackup(accessToken, folderPath) {
     } else {
       log('  - No MCP config found');
     }
+    
+    if (config.plugin) {
+      const pluginConfig = { plugin: config.plugin };
+      fse.writeJsonSync(path.join(tempBackupDir, 'plugin-config.json'), pluginConfig, { spaces: 2 });
+      backupInfo.plugin = pluginConfig;
+      log('  - Copied plugin config');
+    } else {
+      log('  - No plugin config found');
+    }
   } else {
     log('  - No config file found');
   }
