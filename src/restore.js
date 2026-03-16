@@ -1,6 +1,7 @@
 import fs from 'fs';
 import fse from 'fs-extra';
 import path from 'path';
+import AdmZip from 'adm-zip';
 import {
   getOpencodeDirs,
   getBackupDir,
@@ -53,13 +54,13 @@ export async function restoreBackup(accessToken, folderPath, localZipPath) {
   await extractZip(zipPath, extractDir);
 
   const backupInfoPath = path.join(extractDir, 'backup-info.json');
-  if (!fileExists(backupInfoPath)) {
-    error('Invalid backup: backup-info.json not found');
-    process.exit(1);
+  let backupInfo = null;
+  if (fileExists(backupInfoPath)) {
+    backupInfo = readJson(backupInfoPath);
+    log(`Backup from: ${backupInfo.timestamp}`);
+  } else {
+    log('Warning: backup-info.json not found, restoring available files...');
   }
-
-  const backupInfo = readJson(backupInfoPath);
-  log(`Backup from: ${backupInfo.timestamp}`);
 
   log('Restoring opencode skills...');
   const opencodeSkillSrc = path.join(extractDir, 'opencode-skill');
@@ -80,16 +81,21 @@ export async function restoreBackup(accessToken, folderPath, localZipPath) {
   log('Restoring MCP config...');
   const mcpConfigSrc = path.join(extractDir, 'mcp-config.json');
   if (fileExists(mcpConfigSrc)) {
-    const mcpConfig = readJson(mcpConfigSrc);
+    const backupMcp = readJson(mcpConfigSrc).mcp;
+    const configDir = path.dirname(dirs.opencodeConfig);
+    ensureDir(configDir);
     
     if (fileExists(dirs.opencodeConfig)) {
       const currentConfig = readJson(dirs.opencodeConfig);
-      currentConfig.mcp = mcpConfig.mcp;
+      currentConfig.mcp = { ...currentConfig.mcp, ...backupMcp };
       writeJson(dirs.opencodeConfig, currentConfig);
+      log('  - Merged MCP config');
     } else {
-      writeJson(dirs.opencodeConfig, { mcp: mcpConfig.mcp });
+      writeJson(dirs.opencodeConfig, { mcp: backupMcp });
+      log('  - Restored MCP config');
     }
-    log('  - Restored MCP config');
+  } else {
+    log('  - No MCP config in backup');
   }
 
   log('Cleaning up temp files...');
@@ -101,11 +107,6 @@ export async function restoreBackup(accessToken, folderPath, localZipPath) {
 }
 
 function extractZip(zipPath, destDir) {
-  return new Promise((resolve, reject) => {
-    const unzipper = require('unzipper');
-    fs.createReadStream(zipPath)
-      .pipe(unzipper.Extract({ path: destDir }))
-      .on('close', resolve)
-      .on('error', reject);
-  });
+  const zip = new AdmZip(zipPath);
+  zip.extractAllTo(destDir, true);
 }

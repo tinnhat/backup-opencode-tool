@@ -9,9 +9,9 @@ export function getHomeDir() {
 export function getOpencodeDirs() {
   const home = getHomeDir();
   return {
-    opencodeSkill: path.join(home, '.opencode', 'skill'),
+    opencodeSkill: path.join(home, '.config', 'opencode', 'skill'),
     agentsSkills: path.join(home, '.agents', 'skills'),
-    opencodeConfig: path.join(home, '.opencode', 'config.json')
+    opencodeConfig: path.join(home, '.config', 'opencode', 'opencode.json')
   };
 }
 

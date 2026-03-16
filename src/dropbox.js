@@ -5,22 +5,23 @@ import { log, error } from './utils.js';
 export class DropboxService {
   constructor(accessToken, folderPath) {
     this.accessToken = accessToken;
-    this.folderPath = folderPath || '';
+    this.folderPath = folderPath;
     this.dbx = new Dropbox({ accessToken });
   }
 
   async uploadFile(filePath, fileName) {
     try {
-      if (this.folderPath) {
+      const folderPath = this.folderPath || '';
+      if (folderPath) {
         try {
-          await this.dbx.filesCreateFolderV2({ path: `/${this.folderPath}` });
+          await this.dbx.filesCreateFolderV2({ path: `/${folderPath}` });
         } catch (folderErr) {
           // Folder may already exist
         }
       }
       
       const fileContent = fs.readFileSync(filePath);
-      const uploadPath = this.folderPath ? `/${this.folderPath}/${fileName}` : `/${fileName}`;
+      const uploadPath = folderPath ? `/${folderPath}/${fileName}` : `/${fileName}`;
       
       const response = await this.dbx.filesUpload({
         path: uploadPath,
@@ -50,7 +51,8 @@ export class DropboxService {
 
   async listFiles() {
     try {
-      const path = this.folderPath || '';
+      const folderPath = this.folderPath || '';
+      const path = folderPath ? `/${folderPath}` : '';
       const response = await this.dbx.filesListFolder({ path });
       return response.result.entries || [];
     } catch (err) {
@@ -77,7 +79,8 @@ export class DropboxService {
 
   async downloadFile(fileName, destPath) {
     try {
-      const path = this.folderPath ? `/${this.folderPath}/${fileName}` : `/${fileName}`;
+      const folderPath = this.folderPath || '';
+      const path = folderPath ? `/${folderPath}/${fileName}` : `/${fileName}`;
       const response = await this.dbx.filesDownload({ path });
       const fileBinary = response.result.fileBinary;
       fs.writeFileSync(destPath, Buffer.from(fileBinary));
@@ -101,15 +104,6 @@ export class DropboxService {
   }
 
   async uploadWithReplace(localPath, fileName) {
-    const existingFile = await this.findFileByName(fileName);
-    if (existingFile) {
-      log(`Replacing: ${fileName}`);
-      try {
-        await this.deleteFile(fileName);
-      } catch (e) {
-        // Continue even if delete fails
-      }
-    }
     return this.uploadFile(localPath, fileName);
   }
 }
